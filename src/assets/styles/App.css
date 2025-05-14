@@ -1,0 +1,9 @@
+.app {
+  padding: 0 60px;
+}
+.container {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-between;
+  align-items: center;
+}

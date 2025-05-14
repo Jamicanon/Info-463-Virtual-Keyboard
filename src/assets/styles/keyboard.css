@@ -1,0 +1,25 @@
+.keyboard {
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.keyboard-row{
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.keyboard .button {
+  width: 60px;
+  height: 60px;
+  font-size: 20px;
+  cursor: pointer;
+}
+.btn-backspace {
+  height: 60px;
+  font-size: 20px;
+  cursor: pointer;
+}

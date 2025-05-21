@@ -7,6 +7,7 @@ function KeyBoard({ title, handleTitleChange }) {
   const handleBackspace = () => {
     handleTitleChange(title.slice(0, -1));
   };
+
   const chars0 = [
     { title: "Q", key: 0 },
     { title: "W", key: 1 },
@@ -39,6 +40,7 @@ function KeyBoard({ title, handleTitleChange }) {
     { title: "N", key: 5 },
     { title: "M", key: 6 },
   ];
+
   return (
     <div className="keyboard">
       <div className="keyboard-row">
@@ -62,6 +64,11 @@ function KeyBoard({ title, handleTitleChange }) {
           </button>
         ))}
         <button className="button" onClick={handleBackspace}>←</button>
+      </div>
+      <div className="keyboard-row">
+        <button className="button spacebar" onClick={() => handleKeyPress(" ")}>
+          Space
+        </button>
       </div>
     </div>
   );

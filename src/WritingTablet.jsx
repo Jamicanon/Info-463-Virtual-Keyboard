@@ -83,20 +83,20 @@ function WritingTablet({ handleTitleChange }) {
       const imageData = canvasRef.current.toDataURL('image/png');
       
       const { data } = await worker.recognize(imageData, {
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-        tessedit_pageseg_mode: '7',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+        tessedit_pageseg_mode: '10',
       });
       
-      const result = data.text.trim().toUpperCase();
+      const result = data.text.trim();
       const letter = result.charAt(0);
       
-      if (/^[A-Z]$/.test(letter)) {
+      if (/^[A-Za-z]$/.test(letter)) {
         setRecognizedLetter(letter);
         handleTitleChange(prevTitle => prevTitle + letter);
         context?.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
       } else {
         setRecognizedLetter('?');
-      }
+      }      
       
       await worker.terminate();
     } catch (error) {

@@ -14,12 +14,16 @@ const RECOGNITION_DELAY = 1000;
 function WritingTablet({ handleTitleChange }) {
   const canvasRef = useRef(null);
   const recognitionTimerRef = useRef(null);
-  
+  const letterCountRef = useRef(0);
+
   const [context, setContext] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isPendingRecognition, setIsPendingRecognition] = useState(false);
   const [recognizedLetter, setRecognizedLetter] = useState('');
+  const [isTiming, setIsTiming] = useState(false);
+  const [startTime, setStartTime] = useState(null);
+  const [finalWpm, setFinalWpm] = useState(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -28,6 +32,8 @@ function WritingTablet({ handleTitleChange }) {
     ctx.lineWidth = CANVAS_CONFIG.lineWidth;
     ctx.lineCap = CANVAS_CONFIG.lineCap;
     setContext(ctx);
+
+    letterCountRef.current = 0;
   }, []);
 
   const clearRecognitionTimer = useCallback(() => {
@@ -67,7 +73,7 @@ function WritingTablet({ handleTitleChange }) {
     if (!isDrawing) return;
     setIsDrawing(false);
     if (isPendingRecognition) return;
-    
+
     setIsPendingRecognition(true);
     recognitionTimerRef.current = setTimeout(async () => {
       await recognizeLetter();
@@ -78,54 +84,74 @@ function WritingTablet({ handleTitleChange }) {
   const recognizeLetter = async () => {
     try {
       setIsRecognizing(true);
-      const worker = await createWorker('eng');
-      
+      const worker = await createWorker();
+
       const imageData = canvasRef.current.toDataURL('image/png');
-      
+
       const { data } = await worker.recognize(imageData, {
         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
         tessedit_pageseg_mode: '10',
       });
-      
+
       const result = data.text.trim();
       const letter = result.charAt(0);
-      
+
       if (/^[A-Za-z]$/.test(letter)) {
         setRecognizedLetter(letter);
         handleTitleChange(prevTitle => prevTitle + letter);
         context?.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
+
+        if (isTiming) {
+          letterCountRef.current += 1;
+        }
       } else {
         setRecognizedLetter('?');
-      }      
-      
+        clearCanvas();
+      }
+
       await worker.terminate();
     } catch (error) {
       console.error('Recognition error:', error);
       setRecognizedLetter('?');
+      clearCanvas();
     } finally {
       setIsRecognizing(false);
     }
   };
 
+  const startSession = () => {
+    setIsTiming(true);
+    setStartTime(Date.now());
+    letterCountRef.current = 0;
+    setFinalWpm(null);
+  };
+
+  const endSession = () => {
+    setIsTiming(false);
+    if (startTime) {
+      const elapsedMinutes = (Date.now() - startTime) / 60000;
+      const calculatedWpm = elapsedMinutes > 0 ? (letterCountRef.current / 5) / elapsedMinutes : 0;
+      setFinalWpm(calculatedWpm.toFixed(2));
+    }
+  };
+
+  const buttonStyle = {
+    padding: '5px 10px',
+    backgroundColor: '#2196F3',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer'
+  };
+
   return (
     <div className="writing-tablet" style={{ position: 'relative' }}>
-      <button
-        onClick={clearCanvas}
-        style={{
-          position: 'absolute',
-          top: '10px',
-          right: '10px',
-          padding: '5px 10px',
-          backgroundColor: '#f44336',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          zIndex: 1
-        }}
-      >
-        Clear
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
+        <button onClick={startSession} style={buttonStyle}>Start</button>
+        <button onClick={endSession} style={buttonStyle}>End</button>
+        <button onClick={clearCanvas} style={{ ...buttonStyle, backgroundColor: '#f44336' }}>Clear</button>
+      </div>
+
       <canvas
         ref={canvasRef}
         width={CANVAS_CONFIG.width}
@@ -142,16 +168,26 @@ function WritingTablet({ handleTitleChange }) {
         onMouseUp={stopDrawing}
         onMouseOut={stopDrawing}
       />
+
       <div style={{ marginTop: '10px', textAlign: 'center' }}>
-        {isRecognizing ? (
-          <div>Recognizing...</div>
-        ) : (
-          recognizedLetter === '?' && (
-            <div onClick={clearCanvas} style={{ color: 'red', cursor: 'pointer' }}>
-              Recognition failed, please try again
-            </div>
-          )
+        {finalWpm !== null && (
+          <div>
+            Your WPM: <strong>{finalWpm}</strong>
+          </div>
         )}
+        <div>
+          {isRecognizing ? (
+            <span>Recognizing...</span>
+          ) : (
+            recognizedLetter === '?' ? (
+              <span style={{ color: 'red', cursor: 'pointer' }} onClick={clearCanvas}>
+                Recognition failed, canvas cleared, please try again
+              </span>
+            ) : (
+              <span>Recognized Letter: <strong>{recognizedLetter}</strong></span>
+            )
+          )}
+        </div>
       </div>
     </div>
   );

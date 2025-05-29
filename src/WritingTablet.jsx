@@ -12,7 +12,7 @@ const CANVAS_CONFIG = {
 
 const RECOGNITION_DELAY = 1000;
 
-function WritingTablet({ handleTitleChange }) {
+function WritingTablet({ handleTitleChange, targetSentence }) {
   const canvasRef = useRef(null);
   const recognitionTimerRef = useRef(null);
   const letterCountRef = useRef(0);
@@ -22,9 +22,12 @@ function WritingTablet({ handleTitleChange }) {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isPendingRecognition, setIsPendingRecognition] = useState(false);
   const [recognizedLetter, setRecognizedLetter] = useState('');
+  const [recognizedText, setRecognizedText] = useState('');
   const [isTiming, setIsTiming] = useState(false);
   const [startTime, setStartTime] = useState(null);
   const [finalWpm, setFinalWpm] = useState(null);
+
+  const TARGET_TEXT = targetSentence || '';
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,6 +39,28 @@ function WritingTablet({ handleTitleChange }) {
 
     letterCountRef.current = 0;
   }, []);
+
+  function MinimumStringDistance(a, b) {
+    const matrix = Array.from({ length: a.length + 1 }, () =>
+      Array(b.length + 1).fill(0)
+    );
+
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+
+    return matrix[a.length][b.length];
+  }
 
   const clearRecognitionTimer = useCallback(() => {
     if (recognitionTimerRef.current) {
@@ -99,6 +124,7 @@ function WritingTablet({ handleTitleChange }) {
 
       if (/^[A-Za-z]$/.test(letter)) {
         setRecognizedLetter(letter);
+        setRecognizedText(prev => prev + letter);
         handleTitleChange(prevTitle => prevTitle + letter);
         context?.clearRect(0, 0, CANVAS_CONFIG.width, CANVAS_CONFIG.height);
 
@@ -153,7 +179,6 @@ function WritingTablet({ handleTitleChange }) {
     }
   };
 
-
   const saveData = (data) => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -164,16 +189,6 @@ function WritingTablet({ handleTitleChange }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-
-  const buttonStyle = {
-    padding: '5px 10px',
-    backgroundColor: '#2196F3',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
   };
 
   return (
@@ -220,6 +235,18 @@ function WritingTablet({ handleTitleChange }) {
             )
           )}
         </div>
+
+        {recognizedText && (
+          <div style={{ marginTop: '16px' }}>
+            <div>Input: <code>{recognizedText}</code></div>
+            <div>MSD: <strong>{MinimumStringDistance(recognizedText, TARGET_TEXT)}</strong></div>
+            <div>
+              Accuracy: <strong>{
+                Math.max(0, 100 - (MinimumStringDistance(recognizedText, TARGET_TEXT) / TARGET_TEXT.length) * 100).toFixed(1)
+              }%</strong>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

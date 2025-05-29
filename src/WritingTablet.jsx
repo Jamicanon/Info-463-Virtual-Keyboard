@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { createWorker } from 'tesseract.js';
+import './assets/styles/header.css';
 
 const CANVAS_CONFIG = {
   width: 400,
@@ -128,12 +129,43 @@ function WritingTablet({ handleTitleChange }) {
 
   const endSession = () => {
     setIsTiming(false);
+    const endTime = Date.now();
+
     if (startTime) {
-      const elapsedMinutes = (Date.now() - startTime) / 60000;
+      const elapsedMs = endTime - startTime;
+      const elapsedMinutes = elapsedMs / 60000;
       const calculatedWpm = elapsedMinutes > 0 ? (letterCountRef.current / 5) / elapsedMinutes : 0;
+
       setFinalWpm(calculatedWpm.toFixed(2));
+
+      const sessionData = {
+        startTime: new Date(startTime).toISOString(),
+        endTime: new Date(endTime).toISOString(),
+        durationSeconds: (elapsedMs / 1000).toFixed(2),
+        wpm: calculatedWpm.toFixed(2)
+      };
+
+      saveData(sessionData);
+
+      if (typeof moveToNextSentence === 'function') {
+        moveToNextSentence();
+      }
     }
   };
+
+
+  const saveData = (data) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `WPMData${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
 
   const buttonStyle = {
     padding: '5px 10px',
@@ -147,9 +179,9 @@ function WritingTablet({ handleTitleChange }) {
   return (
     <div className="writing-tablet" style={{ position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
-        <button onClick={startSession} style={buttonStyle}>Start</button>
-        <button onClick={endSession} style={buttonStyle}>End</button>
-        <button onClick={clearCanvas} style={{ ...buttonStyle, backgroundColor: '#f44336' }}>Clear</button>
+        <button onClick={startSession} className="start-button">Start</button>
+        <button onClick={endSession} className="end-button">End</button>
+        <button onClick={clearCanvas} className="clear-button">Clear</button>
       </div>
 
       <canvas
@@ -180,7 +212,7 @@ function WritingTablet({ handleTitleChange }) {
             <span>Recognizing...</span>
           ) : (
             recognizedLetter === '?' ? (
-              <span style={{ color: 'red', cursor: 'pointer' }} onClick={clearCanvas}>
+              <span style={{ color: 'black', cursor: 'pointer' }} onClick={clearCanvas}>
                 Recognition failed, canvas cleared, please try again
               </span>
             ) : (

@@ -26,6 +26,7 @@ function WritingTablet({ handleTitleChange, targetSentence }) {
   const [isTiming, setIsTiming] = useState(false);
   const [startTime, setStartTime] = useState(null);
   const [finalWpm, setFinalWpm] = useState(null);
+  const [finalMsd, setFinalMsd] = useState(null);
 
   const TARGET_TEXT = targetSentence || '';
 
@@ -151,6 +152,7 @@ function WritingTablet({ handleTitleChange, targetSentence }) {
     setStartTime(Date.now());
     letterCountRef.current = 0;
     setFinalWpm(null);
+    setFinalMsd(null);
   };
 
   const endSession = () => {
@@ -164,18 +166,18 @@ function WritingTablet({ handleTitleChange, targetSentence }) {
 
       setFinalWpm(calculatedWpm.toFixed(2));
 
+      const msd = MinimumStringDistance(recognizedText, TARGET_TEXT);
+      setFinalMsd(msd);
+
       const sessionData = {
         startTime: new Date(startTime).toISOString(),
         endTime: new Date(endTime).toISOString(),
         durationSeconds: (elapsedMs / 1000).toFixed(2),
-        wpm: calculatedWpm.toFixed(2)
+        wpm: calculatedWpm.toFixed(2),
+        minimumStringDistance: msd
       };
 
       saveData(sessionData);
-
-      if (typeof moveToNextSentence === 'function') {
-        moveToNextSentence();
-      }
     }
   };
 
@@ -236,15 +238,9 @@ function WritingTablet({ handleTitleChange, targetSentence }) {
           )}
         </div>
 
-        {recognizedText && (
+        {finalMsd !== null && (
           <div style={{ marginTop: '16px' }}>
-            <div>Input: <code>{recognizedText}</code></div>
-            <div>MSD: <strong>{MinimumStringDistance(recognizedText, TARGET_TEXT)}</strong></div>
-            <div>
-              Accuracy: <strong>{
-                Math.max(0, 100 - (MinimumStringDistance(recognizedText, TARGET_TEXT) / TARGET_TEXT.length) * 100).toFixed(1)
-              }%</strong>
-            </div>
+            <div>MSD: <strong>{finalMsd}</strong></div>
           </div>
         )}
       </div>
